@@ -1,0 +1,87 @@
+搜索引擎
+    ElasticSearch
+        支持分布式 Restful接口，任何语言可以调用
+        kibana(可视化) ElasticSearch(存储、计算、搜索数据) Logstash Beats(数据抓取) ELK日志数据分析、实时监控
+    Splunk 商业
+    Solr
+    ...
+
+倒排索引  （正向索引 id）
+   文档 每条数据就是个文档
+   词条 文档按照语义分成词语   term -> id
+   IK分词器 -安装
+        http://192.168.80.128:5601/app/dev_tools#/console
+
+        GET /_analyze
+        {
+          "analyzer": "ik_smart",
+          "text": "asdklnakjfgwe黑暗红色的接口"
+        }
+
+索引库
+   PUT /索引库名称    [创建]
+   GET /索引库名      [查询]
+   DELETE /索引库名   [删除]
+   PUT /索引库名/_mapping  [可以新增，不能修改]
+
+文档操作
+    POST /索引库名/_doc/文档id
+    GET /{索引库名称}/_doc/{id}
+    DELETE /{索引库名}/_doc/id值
+    PUT /{索引库名}/_doc/文档id   POST /{索引库名}/_update/文档id
+
+    批处理
+    POST _bulk
+
+DSL语法
+    叶子查询
+        全文检索 分词器  match
+        精确查询 term range
+        地理查询 地理位置
+    复合查询
+        bool query
+            must/should/must_not 与或非
+            filter 与，不参与算分
+    排序和分页
+        排序 sort
+        分页
+            from  跳过前几条
+            size  取前几条
+        深度分页
+            search after
+    高亮
+        highlight
+    数据据聚合
+        terms 统计
+        date_histogram 按时间分组
+        terms_stats 统计
+
+
+
+
+安装
+    docker network prune 删除无用网络
+    docker network create pipe 重新创建
+
+    docker run -d \
+      --name es \
+      -e "ES_JAVA_OPTS=-Xms512m -Xmx512m" \
+      -e "discovery.type=single-node" \
+      -v es-data:/usr/share/elasticsearch/data \
+      -v es-plugins:/usr/share/elasticsearch/plugins \
+      --privileged \
+      --network pipe \
+      -p 9200:9200 \
+      -p 9300:9300 \
+      elasticsearch:7.12.1
+
+    docker run -d \
+    --name kibana \
+    -e ELASTICSEARCH_HOSTS=http://es:9200 \
+    --network=pipe \
+    -p 5601:5601  \
+    kibana:7.12.1
+
+问题
+    es系统：聚合分析报错: Text fields are not optimised for operations
+        使用keyword

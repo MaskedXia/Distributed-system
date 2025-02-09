@@ -1,0 +1,29 @@
+#!/bin/bash
+
+#参数个数
+if [ $# -lt 1]
+then
+    echo Not enough arguments
+    exit;
+fi
+
+for host in hadoop100 hadoop102 hadoop103
+do 
+    echo ===========$host ===========
+
+    for file in $@
+    do
+        if [ -e $file ]
+        then
+            #防止软链接
+            pdir=$(cd -P $(dirname $file); pwd)
+
+            fname=$(basename $file)
+            #防止重复创建文件
+            ssh $host "mkdir -p $pdir"
+            rsync -av $pdir/$fname $host:$pdir
+        else
+            echo $file not exists
+        fi
+    done
+done

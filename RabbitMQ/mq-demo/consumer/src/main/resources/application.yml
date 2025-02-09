@@ -1,0 +1,22 @@
+logging:
+  pattern:
+    dateformat: MM-dd HH:mm:ss:SSS
+spring:
+  rabbitmq:
+    host: 192.168.80.128 # 你的虚拟机IP
+    port: 5672 # 端口
+    virtual-host: /hmall # 虚拟主机
+    username: hmall # 用户名
+    password: 123 # 密码
+    listener:
+      simple:
+        prefetch: 1 # 每次只获取一条消息，能者多劳
+        acknowledge-mode: auto # 业务异常NACK  消息处理异常或校验异常reject
+        retry:
+          enabled: true
+          initial-interval: 1000 # 初始重试间隔
+          max-interval: 60000 # 最大重试间隔
+          max-attempts: 3 # 最大重试次数
+          multiplier: 2 # 重试间隔倍数
+  main:
+    allow-bean-definition-overriding: true #

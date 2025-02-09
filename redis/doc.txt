@@ -1,0 +1,177 @@
+NoSQL 非关系型数据库
+    非结构化、无关联的、非SQL、BASE、内存（效率更高）
+
+Redis
+    Remote Dictionary Server 2009
+    key-value
+    单线程，每个命令具备原子性
+    低延迟，速度快（基于内存、IO多路复用、良好的编码C）
+    数据持久化
+    主从集群、分片集群
+
+redis启动
+    yum update
+    yum install epel-release
+    yum install redis
+
+    systemctl enable redis
+    systemctl start redis
+    systemctl stop redis
+
+    ps -ef | grep redis
+
+    redis-cli -h 127.0.0.1 -p 6379 -a 123456
+
+GUI
+    https://github.com/lework/RedisDesktopManager-Windows/releases
+
+命令
+    help key
+    keys *  【查询所有key】
+    del 
+    exists
+    expire 设置有效期，到期自动删除
+    ttl 查看有效期
+
+    set name value EX 10 【10s过期】
+    get name
+    mset n1 v1 n2 v2  【批量获取】
+    mget n1 n2 
+
+    incr n1 【value自增1】
+    incrby n1 2 【value自增2】
+    incrbyfloat n1 0.5
+    decr n1 
+
+    setnx n3 v3 【key不存在添加】 set n3 v3 nx 【一样】
+    setex n4 10 v4 【超时10】 set name value ex 10
+
+
+类型
+    String  set name value
+
+    JSON    set pipe:user:2 '{"id":1, "name":"jack", "age":100}'
+
+    Hash    hset pipe:user:3 name Lucy 
+            hset pipe:user:3 age 99
+            hmset pipe:user:4 name Lilei age 66
+            hgetall 
+            hkeys
+            hvals
+
+            hincrby pipe:user:3 age -2
+
+    List    有序，元素可以重复，插入删除快，查询速度一般
+            lpush user 1 2 3 4
+            rpush user 5 6 7
+            lpop               【左侧弹出】
+            rpop
+            blpop 阻塞弹出，等待时间
+            brpop
+
+    Set     无序，元素不可重复，查找快，支持交集并集差集
+            sadd set1 1 2 3
+            srem set1 1         删除
+            scard set1          个数
+            smembers set1       成员
+            sismember set1 1    判断是否存在
+            sinter set1 set2    交集
+            sdiff set1 set2     差集
+            sunion set1 set2    并集
+
+    SortedSet 可排序，元素不重复，查询速度快
+            help @sorted_set
+            zadd stu 85 jack 89 lucy 60 tom
+            zscore stu jack         查询jack 85
+            zrem stu jack
+            zrank stu tom           查看排名
+            zrevrank stu tom        倒序排名
+            zcard stu
+            zcount stu 0 80         0-80个数
+            zincrby stu 2 tom
+            zrange stu 0 2          查询前三名
+            zrangebyscore stu 0 80  0-80成员
+
+        HashTable member为键 score为value
+        SkipList 升序 链表 多层指针 增删改查效率和红黑树几乎一致，空间复杂度更高  支持排序
+
+主从集群
+    docker load -i redis.tar
+    docker compose up -d
+    docker compose down
+
+    # 集群
+    slaveof <masterip> <masterport>   # Redis5.0以前
+    replicaof <masterip> <masterport>  # Redis5.0以后
+        docker exec -it r2 redis-cli -p 7002  # 连接r2
+        slaveof 192.168.80.128 7001   # 认r1主，也就是7001
+
+    主：读写   从：读
+
+    全量同步、增量同步
+        master_replid（是否第一次同步） + offset（增量同步）
+            master_replid不一致或者offset被覆盖 全量同步 master发送RDB文件给slave
+            master_replid一致 repl_backlog（写操作写入数据长度offset） 增量同步
+    可以从以下几个方面来优化Redis主从就集群：
+    - 在master中配置repl-diskless-sync  yes启用无磁盘复制，避免全量同步时的磁盘IO。
+    - Redis单节点上的内存占用不要太大，减少RDB导致的过多磁盘IO
+    - 适当提高repl_baklog的大小，发现slave宕机时尽快实现故障恢复，尽可能避免全量同步
+    - 限制一个master上的slave节点数量，如果实在是太多slave，则可以采用主-从-从链式结构，减少master压力
+
+哨兵原理 Sentinel
+    - 状态监控：会不断检查您的master和slave是否按预期工作（指定数量sentinel心跳机制）
+    - 故障恢复（failover）：如果master故障，Sentinel会将一个slave提升为master。（priority、offset、id）
+    - 状态通知：Sentinel充当Redis客户端的服务发现来源，当集群发生failover时，会将最新集群信息推送给Redis的客户端
+
+分片集群
+    -  集群中有多个master，每个master保存不同分片数据 ，解决海量数据存储问题
+    -  每个master都可以有多个slave节点 ，确保高可用
+    -  master之间通过ping监测彼此健康状态 ，类似哨兵作用
+    -  客户端请求可以访问集群任意节点，最终都会被转发到数据所在节点
+
+    docker exec -it r1 bash
+        redis-cli --cluster create --cluster-replicas 1 \
+        192.168.80.128:7001 192.168.80.128:7002 192.168.80.128:7003 \
+        192.168.80.128:7004 192.168.80.128:7005 192.168.80.128:7006
+
+        redis-cli -p 7001 cluster nodes
+    散列插槽
+        哈希槽：16384个槽，key对16384取模确定槽号
+        redis-cli -c -p 7001
+
+内存回收
+    过期KEY
+    在Redis中会有两个Dict（dict，expires），也就是HashTable，其中一个记录KEY-VALUE键值对，
+    另一个记录KEY和过期时间。要判断一个KEY是否过期，只需要到记录过期时间的Dict中根据KEY查询即可。
+
+    过期key删除
+        惰性清理：每次查找
+        定期清理：定期抽样
+            SLOW 10次
+            FAST 不固定
+
+    内存淘汰
+        allkeys volatile
+        random lru lfu
+            - LRU（Least Recently Used），最近最久未使用。用当前时间减去最后一次访问时间，这个值越大则淘汰优先级越高。
+            - LFU（Least Frequently Used），最少频率使用。会统计每个key的访问频率，值越小淘汰优先级越高。
+
+缓存
+    缓存一致性
+        - Cache Aside：有缓存调用者自己维护数据库与缓存的一致性。即：  [推荐]
+          - 查询时：命中则直接返回，未命中则查询数据库并写入缓存
+          - 更新时：更新数据库并删除缓存，查询时自然会更新缓存
+        - Read/Write Through：数据库自己维护一份缓存，底层实现对调用者透明。底层实现：
+          - 查询时：命中则直接返回，未命中则查询数据库并写入缓存
+          - 更新时：判断缓存是否存在，不存在直接更新数据库。存在则更新缓存，同步更新数据库
+        - Write Behind Cahing：读写操作都直接操作缓存，由线程异步的将缓存数据同步到数据库
+    缓存穿透
+        指查询一个根本不存在的数据，导致所有的请求都直接返回空结果。
+        解决：布隆过滤器（Bloom Filter）、缓存空对象
+            布隆过滤器是一种数据结构，可以用来检查一个元素是否在一个集合中。
+    缓存雪崩
+        指缓存同一时间大量失效，导致大量请求直接落到数据库上，从而数据库 workload 剧增。
+        解决：不同key TTL添加随机值、Redis主从复制与Redis哨兵、添加降级限流、多级缓存
+    缓存击穿
+        指一个非常热点数据在缓存中失效或者不存在，所有请求都直接落到数据库上，从而数据库 workload 剧增。
+        解决：互斥锁、使用 Redis 自带的逻辑过期功能、对热点数据设置更短的过期时间

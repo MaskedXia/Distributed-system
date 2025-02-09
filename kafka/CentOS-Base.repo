@@ -1,0 +1,30 @@
+[base]
+name=CentOS-$releasever - Base - Aliyun
+baseurl=https://mirrors.aliyun.com/centos/$releasever/BaseOS/x86_64/os/
+gpgcheck=1
+enabled=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+
+#released updates 
+[updates]
+name=CentOS-$releasever - Updates - Aliyun
+baseurl=https://mirrors.aliyun.com/centos/$releasever/BaseOS/x86_64/os/
+gpgcheck=1
+enabled=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+
+#additional packages that may be useful
+[extras]
+name=CentOS-$releasever - Extras - Aliyun
+baseurl=https://mirrors.aliyun.com/centos/$releasever/BaseOS/x86_64/os/
+gpgcheck=1
+enabled=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+
+#additional packages that extend functionality of CentOS
+[centosplus]
+name=CentOS-$releasever - Plus - Aliyun
+baseurl=https://mirrors.aliyun.com/centos/$releasever/BaseOS/x86_64/os/
+gpgcheck=1
+enabled=0
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7

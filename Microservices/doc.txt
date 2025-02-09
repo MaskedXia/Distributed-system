@@ -1,0 +1,318 @@
+单体架构：架构简单、部署成本低
+分布式架构：降低耦合，有利于升级拓展
+
+微服务 分布式架构
+    单一职责：拆分粒度更小
+    面向服务：对外暴露业务接口
+    自治：独立
+    隔离性强
+
+技术框架
+    SpringCloud
+    Dubbo（阿里）
+    注册中心、配置中心、服务集群、服务网关
+
+服务拆分和远程调用
+    拆分 高内聚 低耦合
+        不重复开发相同业务
+        微服务独立，数据库独立
+        业务暴露接口
+
+MybatisPlus
+    @TableName 指定表名
+    @TableId 主键字段
+    @TableField 普通字段信息
+
+    IService
+
+    http://localhost:8080/doc.html#/home
+
+Docker 快速
+    docker镜像
+        sudo mkdir -p /etc/docker
+        sudo tee /etc/docker/daemon.json <<-'EOF'
+        {
+          "registry-mirrors": ["https://zrd8ib21.mirror.aliyuncs.com"]
+        }
+        EOF
+        sudo systemctl daemon-reload
+        sudo systemctl restart docker
+
+    创建并运行一个容器 -d 后台运行 --name 容器名字 -p 端口映射 宿主端口：容器端口  -e key=value 设置环境变量 运行镜像的名称 mysql
+    docker run -d \
+     --name mysql2 \
+     -p 3307:3306 \
+     -e TZ=Asia/Shanghai \
+     -e MYSQL_ROOT_PASSWORD=123456 \
+     mysql
+
+    下载应用镜像
+        镜像仓库 docker hub
+
+    例子：
+        docker pull nginx
+        docker images 查看镜像
+        docker save -o nginx.tar nginx:latest  打包
+        docker rmi nginx:latest 删除镜像
+        docker load -i nginx.tar 利用打包加载镜像
+
+        docker run -d --name nginx -p 80:80 nginx  创建容器，并启动
+        docker ps
+        docker stop nginx
+        docker start nginx
+        docker logs [-f] nginx 查看日志 【持续】
+
+        docker exec -it mysql bash 可交互终端
+            mysql -uroot -p
+                quit
+            exit
+        docker exec -it mysql mysql -uroot -p 直接进入
+        docker rm mysql 删除镜像
+
+        别名
+        vi ~/.bashrc
+            alias dps='docker ps --format "table {{.ID}}\t{{.Image}}\t{{.Ports}}\t{{.Status}}\t{{.Names}}"'
+            alias dis='docker images'
+        source ~/.bashrc
+
+        数据卷volume 虚拟目录，是容器内目录和宿主机目录之间映射的桥梁 双向绑定
+        docker volume --help
+            docker rm -f nginx 先删
+            docker run -d --name nginx -p 80:80 -v html:/usr/share/nginx/html nginx
+            docker volume ls 挂载名称
+            docker volume inspect html 挂载详细信息 【/var/lib/docker/volumes/html/_data】
+
+        docker inspect nginx 容器详情
+        数据挂载
+            docker rm -f mysql2
+            cd
+            mkdir mysql
+            mkdir data init conf
+
+            【-v ./ 或 / 指定目录】
+            docker run -d \
+             --name mysql \
+             -p 3307:3306 \
+             -e TZ=Asia/Shanghai \
+             -e MYSQL_ROOT_PASSWORD=123456 \
+             -v /root/mysql/data:/var/lib/mysql \
+             -v /root/mysql/init:/docker-entrypoint-initdb.d \
+             -v /root/mysql/conf:/etc/mysql/conf.d \
+             --network pipe \
+             mysql
+
+        自定义镜像
+            java应用
+                linux服务器
+                jre及环境变量
+                jar包
+                运行脚本
+
+        层layer
+            Dockerfile 文本文件 指令
+                cd
+                docker load -i jdk.tar
+                cd demo
+                docker build -t docker-demo .
+                docker run -d --name demo -p 8080:8080 docker-demo 启动
+                dps
+                docker logs -f demo
+                    http://192.168.80.128:8080/hello/count
+
+        网络
+            所有容器bridge方式连接到Docker的一个虚拟网桥上
+            docker network ls                   172.17.0.1/16
+            docker network create pipe        172.18.0.1/16
+            docker network connect pipe mysql2
+                docker inspect mysql2 就有两个网络
+            docker run -d --name demo -p 8080:8080 --network pipe docker-demo
+                docker exec -it demo bash
+                    ping mysql2
+                    ping nginx  不行
+
+
+
+        实践
+            cd /root/hmall
+            docker build -t hmall .
+            docker run -d --name hmall -p 8080:8080 --network pipe hmall
+
+            http://192.168.80.128:8080/doc.html
+
+            部署前端
+            docker run -d --name nginx -p 18080:18080 -p 18081:18081 \
+            -v /root/hmall/nginx/html:/usr/share/nginx/html \
+            -v /root/hmall/nginx/nginx.conf:/etc/nginx/nginx.conf \
+            --network pipe \
+            nginx
+
+            http://192.168.80.128:18080/
+
+        DockerCompose 多个相互关联的Docker容器快速部署
+             docker rm -f nginx mysql hmall
+             docker rmi hmall
+
+             docker compose up -d    在docker-compose.yml所在文件夹，开启所有容器
+             docker compose ps
+             docker compose down     关闭所有容器
+
+远程调用
+    RestTemplate   -> Bean
+    ResponseEntity  发起远程调用
+
+注册中心
+    服务提供者
+    服务消费者
+    注册中心
+
+    注册
+    心跳
+
+    推送
+    负载均衡
+
+    Nacos注册中心
+        nacos.sql
+        部署
+        docker load -i nacos.tar
+
+        docker run -d \
+        --name nacos \
+        --env-file ./custom.env \
+        -p 8848:8848 \
+        -p 9848:9848 \
+        -p 9849:9849 \
+        --restart=always \
+        --network pipe \
+        nacos/nacos-server:v2.1.0-slim
+
+        服务
+            依赖+yml文件配置 nacos
+            iteam复制启动 vm参数 -DServer.port=8083
+
+            discoveryClient
+
+OpenFeign 声明式的http客户端
+    依赖
+    注解 @EnableFeignClients 开关
+    client @FeignClient("item-service")
+    调用 List<ItemDTO> items = itemClient.queryItemsByIds(itemIds);
+
+    连接池
+        依赖OKHttp
+        开启 okhttp
+
+    日志级别
+        DefaultFeignConfig  Logger.Level.FULL;
+        defaultConfiguration = DefaultFeignConfig.class
+
+
+网关 负责请求的路由转发、身份校验
+    Spring Cloud Gateway
+        依赖+启动类+配置
+
+        登录校验
+            过滤器
+            自定义过滤器 token校验
+
+        网关 -> 微服务
+            exchange.mutate() 修改头部
+            拦截器 (spring搜寻)
+
+配置管理 -> nacos配置
+    配置管理服务
+        nacos上配置文件 + 依赖 + bootstrap配置
+    配置热更新
+        无需重启即可配置生效
+        nacos上配置文件(微服务名+项目+后缀 cart-service.yml) + @ConfigurationProperties(prefix = "hm.cart")
+    动态路由
+        nacos配置
+
+微服务保护 Sentinel Hystrix
+    雪崩问题
+        链路某个服务故障，引起整个链路所有微服务不可用
+            保证代码健壮性、网络通畅、应对较高并发
+    服务保护方案
+        请求限流、线程隔离（限定每个业务使用的线程数量）、服务熔断（请求异常比例熔断该业务）
+    Sentinel
+        客户端
+        java -Dserver.port=8090 -Dcsp.sentinel.dashboard.server=localhost:8090 -Dproject.name=sentinel-dashboard -jar sentinel-dashboard.jar
+        账号密码sentinel
+
+        依赖+配置
+
+        工具jmeter
+        请求限流（QPS每秒钟系统可以处理的请求次数）  429
+        线程隔离（并发线程数 限定业务使用的线程数量） 429   配置+FallbackClass
+        服务熔断（断路器）
+
+分布式事务
+    一个业务需要多个服务合作完成，每个服务都有事务，多个事务必须同时成功或者失败
+    Seata
+        TC 事务协调者 维持全局和分支事务状态，协调全局事务提交回滚
+        TM 事务管理者 定义全局事务范围，开始全局事务
+        RM 资源管理者 管理分支事务
+
+        部署TC服务
+            准备表 + 配置文件
+
+        docker load -i seata-1.5.2.tar
+
+        docker run --name seata \
+        -p 8099:8099 \
+        -p 7099:7099 \
+        -e SEATA_IP=192.168.80.128 \
+        -v ./seata:/seata-server/resources \
+        --privileged=true \
+        --network pipe \
+        -d \
+        seataio/seata-server:1.5.2
+
+        依赖 + 配置(nacos + yml)
+
+        XA模式
+            事务强一致性满足ACID
+            一阶段需要锁定数据库资源，等待二阶段结束释放，性能差，依赖关系型数据库实现事务
+            配置 + 注解@GlobalTransactional
+            测试购物车，然后提交订单前将库存减少到0
+
+        AT模式
+            主推 执行sql并提交，undo-log数据快照
+            一阶段直接提交事务，弱一致性，效率高 （短暂时间读取可能出现不一致）
+            表 + 配置 + 注解@GlobalTransactional
+
+
+
+
+问题：
+    docker下载的mysql没办法navicat远程连接，端口没暴露
+    修改端口 -p 3307:3306
+
+    查看监听端口
+        netstat -tuln | grep LISTEN
+
+    查看内部docker是否可以使用 demo
+        curl localhost:8080/hello/count
+
+    查看防火墙是否端口阻止
+        iptables -L INPUT -n -v | grep 8080
+
+    查看网口地址
+        ip addr
+
+    外部网络始终连不上，curl也不行，当前网络有问题
+        docker network prune 删除无用网络
+        docker network create pipe 重新创建
+
+    数据库连不上
+        mysql host必须是虚拟机的host
+
+    报错404访问不到
+        网关没有配置路由
+
+    报错支付不了
+        微服务之间配置的Feign有问题，没有带正确的请求头
+
+    window nginx开始和结束 [对应文件夹]
+        start nginx
+        nginx -s stop

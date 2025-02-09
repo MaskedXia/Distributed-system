@@ -1,0 +1,27 @@
+相关问题
+
+选举机制：
+    半数机制，超过半数投票，通过
+
+    第一次启动选举
+        投票过半数，服务器id大的胜出
+    第二次选举
+        EPOCH 事务id 服务器id
+
+
+生产集群：
+    10台服务器：3台zk
+    20台服务器：5台zk
+    100台服务器：11台zk
+    200台服务器：11台zk
+
+拜占庭将军问题
+    Paxos算法：一致性问题
+    ZAB算法
+
+CAP理论
+    一致性  Consistency
+    可用性  Available
+    分区容错性 Partiton Tolerance
+
+    zookeeper保证CP

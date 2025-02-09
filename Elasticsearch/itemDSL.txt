@@ -1,0 +1,199 @@
+# 查询所有
+GET /items/_search
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+# match text分词器
+GET /items/_search
+{
+  "query": {
+    "match": {
+      "name": "脱脂牛奶"
+    }
+  }
+}
+
+# term查询
+GET /items/_search
+{
+  "query": {
+    "term": {
+      "id": {
+        "value": "12179607155"
+      }
+    }
+  }
+}
+
+
+# range查询
+GET /items/_search
+{
+  "query": {
+    "range": {
+      "price": {
+        "gte": 500000,
+        "lte": 1000000
+      }
+    }
+  }
+}
+
+# ids
+GET /items/_search
+{
+  "query": {
+    "ids": {
+      "values": ["3995643", "1861100"]
+    }
+  }
+}
+
+# 复合查询
+GET /items/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {"match": {"name": "手机"}}
+      ],
+      "should": [
+        {"term": {"brand": { "value": "vivo" }}},
+        {"term": {"brand": { "value": "小米" }}}
+      ],
+      "filter": [
+        {"range": {"price": {"lte": 1000, "gte": 900}}}
+      ]
+    }
+  }
+}
+
+
+
+# 排序，分页
+GET /items/_search
+{
+  "query": {
+    "match_all": {}
+  },
+  "sort": [
+    {
+      "sold": {
+        "order": "desc"
+      },
+      "price": {
+        "order": "asc"
+      }
+    }
+  ],
+  "from": 0,
+  "size": 5
+}
+
+
+# 高亮
+GET /items/_search
+{
+  "query": {
+    "match": {
+      "name": "脱脂牛奶"
+    }
+  },
+  "highlight": {
+    "fields": {
+      "name": {
+        "pre_tags": "<em>",
+        "post_tags": "</em>"
+      }
+    }
+  }
+}
+
+
+#聚合 设置size为0
+GET /items/_search
+{
+  "size": 0,
+  "aggs": {
+    "category_agg": {
+      "terms": {
+        "field": "price",
+        "size": 5
+      }
+    }
+  }
+}
+
+
+GET /items/_search
+{
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "term": {
+            "category.keyword": "手机"
+          }
+        },
+        {
+          "range": {
+            "price": {
+              "gte": 300000
+            }
+          }
+        }
+      ]
+    }
+  },
+  "size": 0,
+  "aggs": {
+    "brand_agg": {
+      "terms": {
+        "field": "price",
+        "size": 20
+      }
+    }
+  }
+}
+
+
+GET /items/_search
+{
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "term": {
+            "category.keyword": "手机"
+          }
+        },
+        {
+          "range": {
+            "price": {
+              "lte": 300000
+            }
+          }
+        }
+      ]
+    }
+  },
+  "size": 0,
+  "aggs": {
+    "brand_agg": {
+      "terms": {
+        "field": "brand.keyword",
+        "size": 20
+      },
+      "aggs": {
+        "stats_meric": {
+          "stats": {
+            "field": "price"
+          }
+        }
+      }
+    }
+  }
+}

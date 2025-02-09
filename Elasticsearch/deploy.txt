@@ -1,0 +1,73 @@
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+docker rm -f mysql nacos mq es kibana seata
+docker network prune
+docker network create pipe
+
+
+
+ docker run -d \
+  --name mysql \
+  -p 3307:3306 \
+  -e TZ=Asia/Shanghai \
+  -e MYSQL_ROOT_PASSWORD=123456 \
+  -v /root/mysql/data:/var/lib/mysql \
+  -v /root/mysql/init:/docker-entrypoint-initdb.d \
+  -v /root/mysql/conf:/etc/mysql/conf.d \
+  --network pipe \
+  mysql
+
+docker run -d \
+--name nacos \
+--env-file ./custom.env \
+-p 8848:8848 \
+-p 9848:9848 \
+-p 9849:9849 \
+--restart=always \
+--network pipe \
+nacos/nacos-server:v2.1.0-slim
+
+docker run --name seata \
+-p 8099:8099 \
+-p 7099:7099 \
+-e SEATA_IP=192.168.80.128 \
+-v ./seata:/seata-server/resources \
+--privileged=true \
+--network pipe \
+-d \
+seataio/seata-server:1.5.2
+
+docker run \
+-e RABBITMQ_DEFAULT_USER=pipe \
+-e RABBITMQ_DEFAULT_PASS=123456 \
+-v mq-plugins:/plugins \
+--name mq \
+--hostname mq \
+-p 15672:15672 \
+-p 5672:5672 \
+--network pipe \
+-d \
+rabbitmq:3.8-management
+
+docker run -d \
+  --name es \
+  -e "ES_JAVA_OPTS=-Xms512m -Xmx512m" \
+  -e "discovery.type=single-node" \
+  -v es-data:/usr/share/elasticsearch/data \
+  -v es-plugins:/usr/share/elasticsearch/plugins \
+  --privileged \
+  --network pipe \
+  -p 9200:9200 \
+  -p 9300:9300 \
+  elasticsearch:7.12.1
+
+docker run -d \
+--name kibana \
+-e ELASTICSEARCH_HOSTS=http://es:9200 \
+--network=pipe \
+-p 5601:5601  \
+kibana:7.12.1
+
+
+
+free -h

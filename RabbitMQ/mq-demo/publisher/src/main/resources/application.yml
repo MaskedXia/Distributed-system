@@ -1,0 +1,21 @@
+logging:
+  pattern:
+    dateformat: MM-dd HH:mm:ss:SSS
+  level:
+    com.itheima: debug
+spring:
+  rabbitmq:
+    host: 192.168.80.128 # 你的虚拟机IP
+    port: 5672 # 端口
+    virtual-host: /hmall # 虚拟主机
+    username: hmall # 用户名
+    password: 123 # 密码
+    connection-timeout: 1s  # 超时时间
+    template:
+      retry: # 阻塞式重连
+        enabled: true  # 开启重试
+        initial-interval: 1000ms #失败初始等待时间
+        max-attempts: 3 # 重试次数
+        max-interval: 60000ms # 重试最大等待时间
+#    publisher-confirm-type: correlated # 开启publisher confirm机制，并设置confirm类型 异步
+#    publisher-returns: true # 开启publisher return机制

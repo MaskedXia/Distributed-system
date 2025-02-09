@@ -1,0 +1,158 @@
+Zookeeper
+    开源的分布式
+
+            服务器1    服务器2    服务器3
+
+Zookeeper（文件系统+通知机制）
+
+            客户端1    客户端2    客户端3
+
+
+一个leader，多个follower
+半数以上节点存货，集群就能正常服务，安装奇数服务器
+全局数据一致性，每个server保存一份相同数据副本
+更新请求顺序执行FIFO
+数据更新原子性
+实时性，在一定事件范围内，读到最新数据
+
+ZNode 1MB
+    znode1
+    znode2
+
+统一命名服务
+统一配置管理
+统一集群管理
+服务器动态上下线
+软负载均衡
+
+修改配置文件
+    vim ./opt/module/zookeeper-3.5.7/conf/zoo.cfg
+        tickTime=2000     【2000ms】
+        initLimit=10      【10*2000ms】初始通信 leader和follower
+        syncLimit=5       【5*2000】 同步 leader和follower
+        dataDir=/opt/module/zookeeper-3.5.7/zkData  存储数据就
+        clientPort=2181    客户端端口号
+
+启动
+    bin/zkServer.sh start  【服务器启动】
+    jps
+    bin/zkCli.sh  【客户端启动】
+
+    bin/zkServer.sh status 【状态】
+    bin/zkServer.sh stop  【停止】
+
+
+
+服务器配置
+    cd zkData
+    vi myid
+        2   【对应身份标识】
+    cd ../conf
+        server.2=hadoop100:2888:3888
+        server.3=hadoop100:2888:3888
+        server.4=hadoop100:2888:3888
+
+        server.A=B:C:D  【A是第几号服务器，B服务器地址，C服务器端口，D集群Leader挂了，重新选举的端口】
+    
+    注意点：
+        删除zkData除了myid的其他文件
+        rm -fr version-2 zookeeper_server.pid
+        
+        关闭防火墙
+        jps关闭启动进程
+
+选举规则：
+    epoch（任期） ZXID（事务） SID（myid）
+
+客户端启动后命令
+    bin/zkCli.sh -server hadoop102:2181   【可以选择主机】
+
+    ls -s /
+        cZxid = 0x0  事务ID
+
+    节点类型
+        持久：客户端和服务端断开后，创建的节点不删除 /znode1
+        短暂：删除 
+        有序号 /znode2_001 【序号递增】
+        无序号
+
+    增加节点
+        help
+        create /znode1 "value1"
+        create /znode1/znode2 "value2"
+        ls /
+        ls /znode1
+        get -s /znode1 【获取值和状态信息】
+        create -s /znode1/znode3 "value3" 【有序号】
+        ls /znode1
+        create -e /znode1/znode4 "value4"  【短暂】
+        set /znode1 "value1_1"  【修改值】
+
+    监听器
+        get -w /znode1      【监听值】【监听一次】
+            set /znode1 "value1_3"
+        ls -w /znode1        【监听路径】
+            create /znode1/znode3 "value3_1"
+    
+    删除节点
+        delete /znode1/znode3
+        deleteall /znode1
+        quit
+    
+    
+
+
+linux镜像源设置
+    sudo cp -r /etc/yum.repos.d /etc/yum.repos.d.backup  【备份】
+    wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo 【更换】
+    sudo yum clean all 【清除缓存】
+    sudo yum makecache
+
+linux主机名设置
+    vim /etc/hosts 【ip:主机名】
+        192.168.80.128 hadoop100
+        192.168.80.130 hadoop102
+        192.168.80.132 hadoop103
+
+linux远程拷贝
+    scp -r /opt/module/. root@hadoop102:/opt/module/   【拷贝到远程】
+    scp -r root@hadoop102:/opt/module/jdk-21.0.2 ./    【远程拷贝到本地】
+
+linux远程同步
+    rsync -av /opt/module/. root@hadoop103:/opt/module/ 
+
+linux集群分发脚本
+    在$PATH的一个bin目录下创建脚本
+    xsync脚本
+    无密登录
+        cd
+        ssh-keygen -t rsa
+        ssh-copy-id hadoop100
+        ssh-copy-id hadoop102
+        ssh-copy-id hadoop103
+    xsync test.txt
+
+linux防火墙
+    查看防火墙状态：systemctl status firewalld
+    暂时关闭防火墙：systemctl stop firewalld
+    永久关闭防火墙（禁用开机自启）：systemctl disable firewalld
+
+
+jps
+    jdk下载安装
+        rpm -qa | grep java | xargs rpm -e --nodeps【删除jdk】
+
+        jdk-8u431-linux-x64.tar.gz 【下载】
+        tar -zxvf jdk-8u431-linux-x64.tar.gz -C /opt/module/
+        vim /etc/profile
+            export JAVA_HOME=/opt/module/jdk1.8.0_431
+            export PATH=$PATH:$JAVA_HOME/bin
+        source /etc/profile
+
+        yum install java-1.8.0-openjdk-devel.x86_64 【需要openjdk】 （yum install java-1.8.0-openjdk*）（yum update）
+
+        alternatives --config java  【可选，选择jdk版本】
+
+
+
+

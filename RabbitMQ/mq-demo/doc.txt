@@ -1,0 +1,107 @@
+RabbitMQ
+    同步调用 OpenFeign
+        拓展性差 性能差 级联失败
+        时效性强，等待到结果返回
+    异步调用
+        解除耦合，拓展性好
+        无需等待，性能好
+        故障隔离
+        缓存消息，流量削峰填谷
+        时效性差，依赖broker可靠性
+
+    技术选型
+        RabbitMQ ActiveMQ RockerMQ Kafka
+
+    安装部署 docker
+        docker run \
+         -e RABBITMQ_DEFAULT_USER=pipe \
+         -e RABBITMQ_DEFAULT_PASS=123456 \
+         -v mq-plugins:/plugins \
+         --name mq \
+         --hostname mq \
+         -p 15672:15672 \
+         -p 5672:5672 \
+         --network pipe \
+         -d \
+         rabbitmq:3.8-management
+
+    架构
+        publisher 消息发送者
+        consumer 消费者
+        virtual-host 虚拟主机
+            exchange 交换机，负责路由
+            queue 队列
+
+    注意项
+        交换机只能路由消息，无法存储消息
+        交换机必须和路由绑定
+
+    数据隔离
+        创建用户 -> 创建虚拟主机 ->..
+
+    spring AMQP
+        依赖+配置
+        rabbitTemplate.convertAndSend
+        @RabbitListener(queues = "simple.queue")
+
+    work queues
+        任务模型 多个消费者绑定
+        同一个消息只会被一个消费者处理
+        prefetch实现能者多劳，默认轮询
+
+    Fanout交换机 广播
+        多个消费者都可以消费
+
+    Direct交换机 定向
+        消息规则路由到指定queue
+        Routing key 需要指定 (交换机和queue绑定的key)
+
+    Topic交换机 话题
+        Routing key 多个单词组合，以.分割
+        #代表0个或多个单词    [#.news  china.#]
+        *代表一个单词
+
+    config + bean
+    or
+    注解声明
+
+    消息转换器
+        默认jdk序列化有缺点
+        使用json
+
+    消息可靠性问题
+        发送者重连 发送者连接MQ失败
+            注解
+        发送者确认 MQ返回确认（一般不开启，影响效率）
+            配置 + ReturnCallback + ConfirmCallback
+        MQ可靠性 MQ宕机
+            交换机持久化
+            队列持久化
+            消息持久化
+                PERSISTENT
+        Lazy Queue
+            收到消息直接写磁盘，不在存储内存 3.12版本默认不可改动
+        消费者确认 是否收到消息
+            ack、nack、reject（处理失败并拒绝该消息）  auto默认
+        失败重试机制
+            注解
+        失败消息处理策略 重试次数耗尽
+            reject （队列删除消息）
+            nack，消息重新入队
+            失败消息投递至指定交换机 RepublishMessageRecoverer
+    业务幂等性 f(x) =f(f(x)) 执行一次或者多次对业务影响是一致的
+        方案
+            唯一消息id (需要写到数据库)
+            业务判断 结合业务本身判断
+
+    保持一致性
+        MQ + 生产者确认、消费者确认、失败重试、MQ持久化 + 业务幂等性
+    兜底方案
+        延迟消息  消费者不会立即收到消息，而在指定时间之后才收到消息
+            死信交换机
+
+问题：
+    Caused by: com.fasterxml.jackson.core.JsonParseException: Unrecognized token 'hello':
+        jackson 类型转换失败，jackson 有严格的转换规范，发送者发送到queue的信息格式不对，String类型数据要加上双引号
+
+

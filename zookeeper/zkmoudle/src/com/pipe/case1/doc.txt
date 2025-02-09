@@ -1,0 +1,3 @@
+create -e -s /servers/hadoop100 "hadoop100"
+create -e -s /servers/hadoop100 "hadoop102"
+create -e -s /servers/hadoop100 "hadoop103"

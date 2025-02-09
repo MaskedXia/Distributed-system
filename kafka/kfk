@@ -1,0 +1,28 @@
+#!/bin/bash
+
+case $1 in
+"start"){
+    for i in hadoop100 hadoop102 hadoop103
+    do
+        echo --------- kafka $i 启动 -------------------------
+        ssh $i "source /etc/profile;export JMX_PORT=9988;nohup ${KAFKA_HOME}/bin/kafka-server-start.sh ${KAFKA_HOME}/config/server.properties >/dev/null* 2>&1 &"
+    done
+}
+;;
+"stop"){
+    for i in hadoop100 hadoop102 hadoop103
+    do
+        echo --------- kafka $i 停止 -------------------------
+        nohup ssh $i "${KAFKA_HOME}/bin/kafka-server-stop.sh" &
+    done
+}
+;;
+"status"){
+    for i in hadoop100 hadoop102 hadoop103
+    do
+        echo --------- kafka $i 状态 -------------------------
+        ssh $i "${KAFKA_HOME}/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"
+    done
+}
+;;
+esac

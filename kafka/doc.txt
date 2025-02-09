@@ -1,0 +1,173 @@
+Kafka 消息队列 Java + Scala
+    临时存储
+
+异步处理、系统解耦、流量削峰、日志处理
+
+生产者、消费者模型
+
+点对点模式、发布订阅模式
+
+producers 生产
+consumers 消费
+connectors 数据库
+stream processors 流处理
+
+安装
+    cd /opt/software/
+    tar -xvzf kafka_2.13-3.9.0.tgz -C ../module/
+    cd ../module/
+    cd kafka_2.13-3.9.0/config
+    vim server.properties
+       broker.id=0
+       log.dirs=/opt/module/kafka_2.13-3.9.0/data
+    xsync kafka_2.13-3.9.0 分发到其他服务器
+    vim server.properties
+       broker.id=1
+       broker.id=2
+       ...
+    vim /etc/profile 配置环境变量
+        export KAFKA_HOME=/opt/module/kafka_2.13-3.9.0
+        export PATH=:$PATH:${KAFKA_HOME}
+    source /etc/profile
+
+    zk start 启动zookeeper
+
+    启动kafka
+    cd /opt/module/kafka_2.13-3.9.0
+    nohup bin/kafka-server-start.sh ./config/server.properties & （yum install coreutils）
+
+    建立主题
+    bin/kafka-topics.sh --create --bootstrap-server hadoop100:9092 --topic test
+    查看
+    bin/kafka-topics.sh --bootstrap-server hadoop100:9092 --list
+
+    生产消息搭到kafka
+    bin/kafka-console-producer.sh --broker-list hadoop100:9092 --topic test
+
+    消费消息
+    bin/kafka-console-consumer.sh --bootstrap-server hadoop100:9092 --topic test --from-beginning
+
+    界面UI工具 offset explorer
+
+    基准测试 benchmark testing 测量和评估软件性能指标的活动，负载执行时间、传输速度、吞吐量、资源占用
+    bin/kafka-topics.sh --create --bootstrap-server hadoop100:9092 --topic benchmark_test --partitions 1 -- replication-factor 1
+    内置测试 生产者 13211.086744 records/sec 消费者 25329.2806
+    bin/kafka-producer-perf-test.sh --topic benchmark_test --num-records 500000 --throughput -1 --record-size 1000 --producer-props bootstrap.servers=hadoop100:9092,hadoop102:9092,hadoop103:9092 acks=1
+    [500000 records sent, 13211.086744 records/sec (12.60 MB/sec), 2244.19 ms avg latency, 3153.00 ms max latency, 2210 ms 50th, 2845 ms 95th, 3100 ms 99th, 3148 ms 99.9th.]
+    bin/kafka-consumer-perf-test.sh --topic benchmark_test --broker-list hadoop100:9092,hadoop102:9092,hadoop103:9092 --fetch-size 100000 --messages 500000
+    [2024-12-17 23:51:46:518, 2024-12-17 23:52:06:258, 476.8372, 24.1559, 500000, 25329.2806, 1641, 18099, 26.3460, 27625.8357]
+
+    生产者幂等性：防止重复保存消息
+        PID: Producer ID 生产者唯一编号
+        Sequence Number 针对消息的递增序列
+
+    生产者分区写入策略
+        轮询分区 默认
+            乱序问题 -> 只使用一个分区
+        随机分区
+        按key分区 hashcode  一定程度有序
+        自定义分区
+
+    消费者组Rebalance
+        触发时机 consumer数量变化；topic数量发生变化；分区数量变化
+
+    消费者分区分配策略
+        Range范围分配（均衡） 默认
+            n = 分区数量 / 消费者数量
+            m = 分区数量 % 消费者数量
+        RoundRobin轮询策略
+            总共分区，一个个轮询
+        Stricky粘性分配
+            没有rebalance和RoundRobin轮询策略一致，发生rebalance尽可能和上一次分配相同
+
+    副本机制
+        acks配置
+            0 只管写入，不管成功 性能最高
+            1 确认接收才发送下一条数据
+            -1 or all 所有副本都将数据同步才发下一条数据 性能最差
+
+    分区的leader和follower，确保消费者消费数据一致，只能从分区leader去读写，follower同步数据，备份
+
+    JMX接口
+        应用程序植入管理
+
+    UI监测
+    kafka-eagle-bin-1.2.4.tar.gz
+         tar -zxvf kafka-eagle-bin-1.2.4.tar.gz -C ../module/
+         cd ../module/
+         cd kafka-eagle-bin-1.2.4/
+         tar -zxvf kafka-eagle-web-1.2.4-bin.tar.gz
+         vim /etc/profile
+             export KE_HOME=/opt/module/kafka-eagle-bin-1.2.4/kafka-eagle-web-1.2.4
+             export PATH=$PATH:$KE_HOME/bin
+         source /etc/profile
+
+         /opt/module/kafka-eagle-bin-1.2.4/kafka-eagle-web-1.2.4/conf/system-config.properties
+         bin/ke.sh
+         ./ke.sh    启动
+            http://hadoop100:8048/ke/account/signin?/ke/
+
+    分区的leader（读写） 和 follower（副本）
+        /opt/module/kafka_2.13-3.9.0/data
+            topic
+                partition
+                    segment
+                        index
+                        log
+                        timeindex
+
+    AR、ISR、OSR [follower]
+        assigned replicas 已分配的所有副本
+        与leader保持一定程度同步的副本 In-sync-replicas
+        follower 副本同步滞后过多的副本 out-off-sync-replicas
+
+    leader选举
+        controller的选举（基于broker）
+            zookeeper存controller节点
+        读取当前分区的ISR，只要有一个replicas存货，选中它为leader（速度快）
+
+    leader负载均衡
+        某个broker crash后，可能导致leader分布不均匀，可以通过命令使得均匀分布
+
+    读写过程
+        写：通过zk找partition对应的leader
+            producer写入数据
+            ISR里面的follower同步数据，并返回给leader ack
+            返回给producer ACK
+        读：通过zk找partition对应的leader
+            通过zk找到consumer对应的offset
+            从offset拉取数据
+            提交offset
+
+    消息不丢失
+        broker不丢失：ISR的follower会从leader中复制数据（副本）
+        生产者不丢失：ACK机制（-1 or all）、同步和异步
+        消费者不丢失：offset
+            at-most once 最多一次，不管成功
+            at-lease once 至少一次，可能重复
+            exactly once 仅被一次 （使用mysql的事务，将写入数据和offset放在一个事务；而不是将offset存在zk）
+
+    数据挤压 kafka有大量没有被消费的数据
+        例如写入mysql报错、网络延迟（修改消费时间）
+
+
+
+问题
+    String must be one of: uncompressed, zstd, lz4, snappy, gzip, producer
+
+    nohub 不存在
+        sudo cp /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
+        sudo curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+        sudo yum clean all
+        sudo yum makecache
+        yum repolist
+
+        bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+
+    window主机识别vm主机
+    C:\Windows\System32\drivers\etc\hosts
+    192.168.80.128 hadoop100
+    192.168.80.130 hadoop102
+    192.168.80.132 hadoop103
+
+

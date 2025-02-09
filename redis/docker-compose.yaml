@@ -1,0 +1,39 @@
+version: "3.2"
+
+services:
+  r1:
+    image: redis
+    container_name: r1
+    network_mode: "host"
+    entrypoint: ["redis-server", "--port", "7001"]
+  r2:
+    image: redis
+    container_name: r2
+    network_mode: "host"
+    entrypoint: ["redis-server", "--port", "7002", "--slaveof", "192.168.80.128", "7001"]
+  r3:
+    image: redis
+    container_name: r3
+    network_mode: "host"
+    entrypoint: ["redis-server", "--port", "7003", "--slaveof", "192.168.80.128", "7001"]
+  s1:
+    image: redis
+    container_name: s1
+    volumes:
+      - /root/redis/s1:/etc/redis
+    network_mode: "host"
+    entrypoint: ["redis-sentinel", "/etc/redis/sentinel.conf", "--port", "27001"]
+  s2:
+    image: redis
+    container_name: s2
+    volumes:
+      - /root/redis/s2:/etc/redis
+    network_mode: "host"
+    entrypoint: ["redis-sentinel", "/etc/redis/sentinel.conf", "--port", "27002"]
+  s3:
+    image: redis
+    container_name: s3
+    volumes:
+      - /root/redis/s3:/etc/redis
+    network_mode: "host"
+    entrypoint: ["redis-sentinel", "/etc/redis/sentinel.conf", "--port", "27003"]
