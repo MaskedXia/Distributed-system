@@ -9,6 +9,14 @@ Redis
     数据持久化
     主从集群、分片集群
 
+Redis快的原因
+    完全基于内存（持久化是fork子进程以及利用linux页缓存技术完成）
+    单线程操作，避免上下文切换
+    合理的数据结构
+    非阻塞IO（epoll）
+
+
+
 redis启动
     yum update
     yum install epel-release
@@ -48,11 +56,11 @@ GUI
 
 
 类型
-    String  set name value
+    String  set name value                                         [底层数据结构：int raw embstr]
 
     JSON    set pipe:user:2 '{"id":1, "name":"jack", "age":100}'
 
-    Hash    hset pipe:user:3 name Lucy 
+    Hash    hset pipe:user:3 name Lucy                             [ziplist 哈希表]
             hset pipe:user:3 age 99
             hmset pipe:user:4 name Lilei age 66
             hgetall 
@@ -61,7 +69,7 @@ GUI
 
             hincrby pipe:user:3 age -2
 
-    List    有序，元素可以重复，插入删除快，查询速度一般
+    List    有序，元素可以重复，插入删除快，查询速度一般                  [ziplist 双向链表]
             lpush user 1 2 3 4
             rpush user 5 6 7
             lpop               【左侧弹出】
@@ -69,7 +77,7 @@ GUI
             blpop 阻塞弹出，等待时间
             brpop
 
-    Set     无序，元素不可重复，查找快，支持交集并集差集
+    Set     无序，元素不可重复，查找快，支持交集并集差集                  [ziplist 哈希表]
             sadd set1 1 2 3
             srem set1 1         删除
             scard set1          个数
@@ -79,7 +87,7 @@ GUI
             sdiff set1 set2     差集
             sunion set1 set2    并集
 
-    SortedSet 可排序，元素不重复，查询速度快
+    SortedSet 可排序，元素不重复，查询速度快                            [ziplist 跳表]
             help @sorted_set
             zadd stu 85 jack 89 lucy 60 tom
             zscore stu jack         查询jack 85
